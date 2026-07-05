@@ -1,246 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Secret Arcade Clock</title>
-  <style>
-    @import url("https://fonts.googleapis.com");
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clock</title>
 
-    :root { color-scheme: dark; --neon: #74f0ed; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
 
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: #05070d;
-      color: #e9f2ff;
-      font-family: "Space Grotesk", sans-serif;
-      overflow: hidden;
-    }
+body{
+    background:#05070d;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    overflow:hidden;
+    font-family:Arial, Helvetica, sans-serif;
+}
 
-    /* Clock Styles */
-    .clock { text-align: center; transition: filter 0.3s; }
-    .time { font-size: clamp(3rem, 12vw, 12rem); font-weight: 700; color: var(--neon); text-shadow: 0 0 24px rgba(116, 240, 237, 0.25); }
-    .date { margin-top: 1rem; font-size: clamp(1.2rem, 3vw, 3rem); color: #8ba6c1; }
+.clock{
+    text-align:center;
+}
 
-    /* Arcade Overlay */
-    #arcadeScreen {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(5, 7, 13, 0.98);
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      backdrop-filter: blur(10px);
-    }
+#time{
+    font-size:min(12vw,180px);
+    font-weight:bold;
+    color:#ff0000;
+    user-select:none;
+}
 
-    .launcher { text-align: center; }
-    .launcher h2 { font-size: 3rem; margin-bottom: 2rem; color: var(--neon); text-transform: uppercase; letter-spacing: 4px; }
-    .game-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-    
-    .game-card {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(116, 240, 237, 0.3);
-      padding: 20px;
-      border-radius: 15px;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-    .game-card:hover { background: var(--neon); color: #000; transform: translateY(-5px); }
+#date{
+    margin-top:20px;
+    font-size:min(3vw,40px);
+    color:#cccccc;
+    user-select:none;
+    display:none;
+}
 
-    /* Game Container */
-    #gameContainer { display: none; flex-direction: column; align-items: center; }
-    canvas { background: #000; border: 3px solid var(--neon); box-shadow: 0 0 30px rgba(116, 240, 237, 0.1); }
-    .stats { width: 400px; display: flex; justify-content: space-between; margin-bottom: 10px; font-family: 'JetBrains Mono'; color: var(--neon); }
-    
-    .back-btn { margin-top: 20px; padding: 10px 20px; background: none; border: 1px solid #fff; color: #fff; cursor: pointer; border-radius: 5px; }
-    .back-btn:hover { background: #fff; color: #000; }
-  </style>
+#colourPicker{
+    position:fixed;
+    top:20px;
+    right:20px;
+    width:80px;
+    height:80px;
+    border:none;
+    background:none;
+    display:none;
+    cursor:pointer;
+}
+</style>
 </head>
+
 <body>
 
-  <div class="clock" id="mainClock">
-    <div class="time" id="time">00:00:00</div>
-    <div class="date" id="date">London Time</div>
-  </div>
+<div class="clock">
+    <div id="time">00:00:00.000</div>
+    <div id="date"></div>
+</div>
 
-  <!-- Hidden Arcade -->
-  <div id="arcadeScreen">
-    <!-- Menu -->
-    <div id="menu" class="launcher">
-      <h2>Secret Arcade</h2>
-      <div class="game-grid">
-        <div class="game-card" onclick="startApp('snake')"><h3>SNAKE</h3><p>Classic Slither</p></div>
-        <div class="game-card" onclick="startApp('pong')"><h3>PONG</h3><p>vs Computer</p></div>
-        <div class="game-card" onclick="startApp('breakout')"><h3>BRICKS</h3><p>Retro Breakout</p></div>
-      </div>
-      <p style="margin-top: 30px; color: #555;">Press ESC to return to Clock</p>
-    </div>
+<input type="color" id="colourPicker" value="#ff0000">
 
-    <!-- Game Area -->
-    <div id="gameContainer">
-      <div class="stats">
-        <span>Score: <span id="curScore">0</span></span>
-        <span>Best: <span id="highScore">0</span></span>
-      </div>
-      <canvas id="arcadeCanvas" width="400" height="400"></canvas>
-      <button class="back-btn" onclick="showMenu()">Back to Menu</button>
-    </div>
-  </div>
+<script>
 
-  <script>
-    // --- CLOCK ---
-    function updateClock() {
-      const now = new Date();
-      document.getElementById("time").innerText = now.toLocaleTimeString('en-GB');
-      document.getElementById("date").innerText = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
+const time = document.getElementById("time");
+const date = document.getElementById("date");
+const picker = document.getElementById("colourPicker");
 
-    // --- INPUT LISTENER ---
-    let inputBuffer = "";
-    window.addEventListener("keydown", (e) => {
-      if (document.getElementById("arcadeScreen").style.display !== "flex") {
-        inputBuffer += e.key;
-        if (inputBuffer.endsWith("123")) {
-          document.getElementById("arcadeScreen").style.display = "flex";
-          showMenu();
-        }
-      }
-      if (e.key === "Escape") {
-        document.getElementById("arcadeScreen").style.display = "none";
-        stopGame();
-      }
+let dateVisible = false;
+let pickerVisible = false;
+
+function updateClock(){
+
+    const now = new Date();
+
+    const h = String(now.getHours()).padStart(2,"0");
+    const m = String(now.getMinutes()).padStart(2,"0");
+    const s = String(now.getSeconds()).padStart(2,"0");
+    const ms = String(now.getMilliseconds()).padStart(3,"0");
+
+    time.textContent = `${h}:${m}:${s}.${ms}`;
+
+    date.textContent = now.toLocaleDateString("en-GB",{
+        weekday:"long",
+        day:"numeric",
+        month:"long",
+        year:"numeric"
     });
 
-    // --- ARCADE ENGINE ---
-    const canvas = document.getElementById("arcadeCanvas");
-    const ctx = canvas.getContext("2d");
-    let currentGame = null;
-    let loop = null;
-    let score = 0;
+    requestAnimationFrame(updateClock);
+}
 
-    function showMenu() {
-      stopGame();
-      document.getElementById("menu").style.display = "block";
-      document.getElementById("gameContainer").style.display = "none";
+updateClock();
+
+picker.addEventListener("input", () => {
+    time.style.color = picker.value;
+});
+
+document.addEventListener("keydown",(e)=>{
+
+    switch(e.key.toLowerCase()){
+
+        case "d":
+            dateVisible = !dateVisible;
+            date.style.display = dateVisible ? "block" : "none";
+            break;
+
+        case "c":
+            pickerVisible = !pickerVisible;
+            picker.style.display = pickerVisible ? "block" : "none";
+            break;
     }
 
-    function startApp(gameType) {
-      document.getElementById("menu").style.display = "none";
-      document.getElementById("gameContainer").style.display = "flex";
-      score = 0;
-      currentGame = gameType;
-      initGame(gameType);
-      
-      const best = localStorage.getItem('best_' + gameType) || 0;
-      document.getElementById("highScore").innerText = best;
-      
-      if(loop) clearInterval(loop);
-      loop = setInterval(update, gameType === 'snake' ? 100 : 1000/60);
-    }
+});
 
-    function stopGame() {
-      clearInterval(loop);
-      ctx.clearRect(0,0,400,400);
-    }
+</script>
 
-    // --- GAME LOGICS ---
-    let state = {};
-
-    function initGame(type) {
-      if(type === 'snake') {
-        state = { sn: [{x:160,y:160}], d: 'R', f: {x:80,y:80}, nextD: 'R' };
-      } else if(type === 'pong') {
-        state = { p1: 160, p2: 160, bx: 200, by: 200, bdx: 3, bdy: 3 };
-      } else if(type === 'breakout') {
-        state = { p: 160, bx: 200, by: 200, bdx: 3, bdy: -3, bricks: [] };
-        for(let i=0; i<5; i++) for(let j=0; j<8; j++) state.bricks.push({x: j*50+5, y: i*20+30, v: true});
-      }
-    }
-
-    function update() {
-      ctx.fillStyle = "black"; ctx.fillRect(0,0,400,400);
-      document.getElementById("curScore").innerText = score;
-
-      if(currentGame === 'snake') {
-        state.d = state.nextD;
-        let head = {...state.sn[0]};
-        if(state.d === 'U') head.y -= 20; if(state.d === 'D') head.y += 20;
-        if(state.d === 'L') head.x -= 20; if(state.d === 'R') head.x += 20;
-
-        if(head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400 || state.sn.some(s=>s.x===head.x && s.y===head.y)) return initGame('snake');
-
-        state.sn.unshift(head);
-        if(head.x === state.f.x && head.y === state.f.y) {
-          score += 10;
-          state.f = {x: Math.floor(Math.random()*19)*20, y: Math.floor(Math.random()*19)*20};
-        } else state.sn.pop();
-
-        ctx.fillStyle = "red"; ctx.fillRect(state.f.x, state.f.y, 18, 18);
-        ctx.fillStyle = "#74f0ed"; state.sn.forEach(s => ctx.fillRect(s.x, s.y, 18, 18));
-      }
-
-      if(currentGame === 'pong') {
-        state.bx += state.bdx; state.by += state.bdy;
-        if(state.by < 0 || state.by > 390) state.bdy *= -1;
-        
-        // AI
-        if(state.by > state.p2 + 25) state.p2 += 3; else state.p2 -= 3;
-        
-        // Collisions
-        if(state.bx < 20 && state.by > state.p1 && state.by < state.p1 + 60) { state.bdx = 4; score++; }
-        if(state.bx > 370 && state.by > state.p2 && state.by < state.p2 + 60) state.bdx = -4;
-        
-        if(state.bx < 0 || state.bx > 400) { saveScore('pong', score); initGame('pong'); score = 0; }
-
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(10, state.p1, 10, 60); // Player
-        ctx.fillRect(380, state.p2, 10, 60); // Bot
-        ctx.fillRect(state.bx, state.by, 10, 10); // Ball
-      }
-
-      if(currentGame === 'breakout') {
-        state.bx += state.bdx; state.by += state.bdy;
-        if(state.bx < 0 || state.bx > 390) state.bdx *= -1;
-        if(state.by < 0) state.bdy *= -1;
-        if(state.by > 370 && state.bx > state.p && state.bx < state.p + 80) state.bdy = -4;
-        if(state.by > 400) { saveScore('breakout', score); initGame('breakout'); score = 0; }
-
-        state.bricks.forEach(b => {
-          if(b.v && state.bx > b.x && state.bx < b.x+45 && state.by > b.y && state.by < b.y+15) {
-            b.v = false; state.bdy *= -1; score += 20;
-          }
-          if(b.v) { ctx.fillStyle = "#74f0ed"; ctx.fillRect(b.x, b.y, 45, 15); }
-        });
-        ctx.fillStyle = "#fff"; ctx.fillRect(state.p, 380, 80, 10);
-        ctx.fillRect(state.bx, state.by, 8, 8);
-      }
-    }
-
-    function saveScore(game, s) {
-      const best = localStorage.getItem('best_'+game) || 0;
-      if(s > best) localStorage.setItem('best_'+game, s);
-    }
-
-    window.addEventListener("keydown", e => {
-      // Snake
-      if(e.key === "ArrowUp" && state.d !== 'D') state.nextD = 'U';
-      if(e.key === "ArrowDown" && state.d !== 'U') state.nextD = 'D';
-      if(e.key === "ArrowLeft" && state.d !== 'R') state.nextD = 'L';
-      if(e.key === "ArrowRight" && state.d !== 'L') state.nextD = 'R';
-      // Pong/Breakout
-      if(e.key === "ArrowLeft" || e.key === "a") state.p = Math.max(0, state.p - 25);
-      if(e.key === "ArrowRight" || e.key === "d") state.p = Math.min(320, state.p + 25);
-      if(e.key === "ArrowUp") state.p1 = Math.max(0, state.p1 - 20);
-      if(e.key === "ArrowDown") state.p1 = Math.min(340, state.p1 + 20);
-    });
-  </script>
 </body>
 </html>
